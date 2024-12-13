@@ -34,3 +34,12 @@ Contributions are welcome! Feel free to open issues or submit pull requests.
 
 This project is licensed under the MIT License.
 
+
+### Installation
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/0xb-s/ssh-browser
+   cd ssh-browser
+   cargo run --release
+   ``` 
+
