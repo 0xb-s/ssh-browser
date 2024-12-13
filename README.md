@@ -40,6 +40,10 @@ This project is licensed under the MIT License.
    ```bash
    git clone https://github.com/0xb-s/ssh-browser
    cd ssh-browser
-   cargo run --release
-   ``` 
+      ```
+2. Build and run the project:
 
+    ```bash
+   cargo run --release
+ 
+     ```
