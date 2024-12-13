@@ -19,3 +19,12 @@ SSH File Browser is a desktop application built using `egui`. It provides a grap
 
 
 
+## Contributing
+
+
+Contributions are welcome! Feel free to open issues or submit pull requests.
+
+## License
+
+This project is licensed under the MIT License.
+
