@@ -10,7 +10,7 @@ fn main() -> Result<(), eframe::Error> {
     eframe::run_native(
         "SSH File Manager",
         options,
-        Box::new(|_cc| Box::new(App::default())),
+        Box::new(|_cc| Ok(Box::new(App::default()))),
     )
 }
 
