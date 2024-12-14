@@ -104,7 +104,7 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, connection: &mut Option
         });
         ui.horizontal(|ui| {
             ui.label("Password:");
-            ui.text_edit_singleline(&mut state.password);
+            ui.add(egui::TextEdit::singleline(&mut state.password).password(true));
         });
         ui.horizontal(|ui| {
             ui.label("Port:");
