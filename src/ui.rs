@@ -1,7 +1,6 @@
 use crate::ssh::SSHConnection;
 use crate::ssh::SSHConnectionS;
 use eframe::egui;
-use eframe::egui::TextEdit;
 use egui::Ui;
 use std::fs::File;
 use std::io::Read;
