@@ -200,10 +200,8 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, connection: &mut Option
         egui::ScrollArea::vertical().show(ui, |ui| {
             for (name, is_dir) in state.files.clone() {
                 ui.horizontal(|ui| {
-                    // Check if the file/directory is being renamed
                     if let Some(renaming_file) = &state.renaming_file {
                         if renaming_file == &name {
-                            // Show rename input and buttons
                             ui.text_edit_singleline(&mut state.new_name);
                             if ui.button("Save").clicked() {
                                 if let Some(conn) = connection {
@@ -214,7 +212,7 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, connection: &mut Option
                                         Ok(_) => {
                                             state.renaming_file = None;
                                             state.new_name.clear();
-                                            // Refresh directory listing
+
                                             match conn.list_directory(&state.current_path) {
                                                 Ok(files) => state.files = files,
                                                 Err(e) => state.error_message = Some(e),
@@ -230,7 +228,6 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, connection: &mut Option
                             }
                         }
                     } else {
-                        // Normal display for files/directories
                         if is_dir {
                             if ui.button(format!("📁 {}", name)).clicked() {
                                 state.current_path = format!(
@@ -249,7 +246,6 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, connection: &mut Option
                             ui.label(format!("📄 {}", name));
                         }
 
-                        // Buttons for actions (Download, Delete, Rename, Modify)
                         if !is_dir {
                             if ui.button("Download").clicked() {
                                 if let Some(conn) = connection {
