@@ -246,30 +246,29 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, connection: &mut Option
                             ui.label(format!("📄 {}", name));
                         }
 
-                        if !is_dir {
-                            if ui.button("Download").clicked() {
-                                if let Some(conn) = connection {
-                                    if let Some(local_path) = rfd::FileDialog::new()
-                                        .set_file_name(name.clone())
-                                        .save_file()
-                                    {
-                                        match conn.download_file(
-                                            &format!("{}/{}", state.current_path, name),
-                                            local_path.to_str().unwrap(),
-                                        ) {
-                                            Ok(_) => {
-                                                state.error_message =
-                                                    Some("Download successful".to_string())
-                                            }
-                                            Err(e) => {
-                                                state.error_message =
-                                                    Some(format!("Failed to download: {}", e))
-                                            }
-                                        };
-                                    }
+                        if !is_dir && ui.button("Download").clicked() {
+                            if let Some(conn) = connection {
+                                if let Some(local_path) = rfd::FileDialog::new()
+                                    .set_file_name(name.clone())
+                                    .save_file()
+                                {
+                                    match conn.download_file(
+                                        &format!("{}/{}", state.current_path, name),
+                                        local_path.to_str().unwrap(),
+                                    ) {
+                                        Ok(_) => {
+                                            state.error_message =
+                                                Some("Download successful".to_string());
+                                        }
+                                        Err(e) => {
+                                            state.error_message =
+                                                Some(format!("Failed to download: {}", e));
+                                        }
+                                    };
                                 }
                             }
                         }
+
                         if ui.button("Delete").clicked() {
                             if let Some(conn) = connection {
                                 let remote_path = format!("{}/{}", state.current_path, name);
@@ -290,23 +289,22 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, connection: &mut Option
                                 }
                             }
                         }
-                        if !is_dir {
-                            if ui.button("Modify").clicked() {
-                                if let Some(conn) = connection {
-                                    let remote_path = format!("{}/{}", state.current_path, name);
-                                    match conn.read_file(&remote_path) {
-                                        Ok(content) => {
-                                            state.editing_file = Some(remote_path);
-                                            state.file_content = content;
-                                        }
-                                        Err(e) => {
-                                            state.error_message =
-                                                Some(format!("Failed to read file: {}", e))
-                                        }
+                        if !is_dir && ui.button("Modify").clicked() {
+                            if let Some(conn) = connection {
+                                let remote_path = format!("{}/{}", state.current_path, name);
+                                match conn.read_file(&remote_path) {
+                                    Ok(content) => {
+                                        state.editing_file = Some(remote_path);
+                                        state.file_content = content;
+                                    }
+                                    Err(e) => {
+                                        state.error_message =
+                                            Some(format!("Failed to read file: {}", e));
                                     }
                                 }
                             }
                         }
+
                         if ui.button("Rename").clicked() {
                             state.renaming_file = Some(name.clone());
                             state.new_name = name.clone();
