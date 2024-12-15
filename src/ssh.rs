@@ -1,9 +1,9 @@
-use serde::{Deserialize, Serialize};
-use ssh2::{FileStat, OpenFlags, OpenType, Session, Sftp};
-use std::fs::{DirEntry, File};
-use std::io::{Read, Write};
-use std::net::TcpStream;
-use std::path::Path;
+use ssh2::{OpenFlags, OpenType, Session, Sftp};
+use std::{
+    io::{Read, Write},
+    net::TcpStream,
+    path::Path,
+};
 
 /// Manages SSH and SFTP connections.
 pub struct SSHConnection {
@@ -14,43 +14,9 @@ pub struct SSHConnection {
     session: Option<Session>,
     sftp: Option<Sftp>,
 }
- 
 
-impl From<SSHConnectionS> for SSHConnection {
-    fn from(conn_s: SSHConnectionS) -> Self {
-   
-        SSHConnection {
-            hostname: conn_s.hostname,
-            username: conn_s.username,
-            password: conn_s.password,
-            port: conn_s.port,
-            session: None,
-            sftp: None,
-         
-        }
-    }
-}
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SSHConnectionS {
-    pub hostname: String,
-    pub username: String,
-    pub port: u16,
-    pub password: String, 
-}
 impl SSHConnection {
-    pub fn from_ssh_connection_file(file_conn: SSHConnectionS) -> Self {
-        SSHConnection {
-            hostname: file_conn.hostname,
-            username: file_conn.username,
-            password: file_conn.password,
-            port: file_conn.port,
-            session: None,
-            sftp: None,
-        }
-    }
-
     pub fn new(hostname: &str, username: &str, password: &str, port: u16) -> Self {
-    
         Self {
             hostname: hostname.to_string(),
             username: username.to_string(),
@@ -158,8 +124,6 @@ impl SSHConnection {
         }
     }
 
-   
-
     pub fn download_file(&self, remote_path: &str, local_path: &str) -> Result<(), String> {
         let sftp = self
             .sftp
@@ -215,13 +179,5 @@ impl SSHConnection {
                 .map_err(|e| format!("Error writing to remote file: {}", e))?;
         }
         Ok(())
-    }
-}
-
-fn is_directory(stat: &FileStat) -> bool {
-    if let Some(perms) = stat.perm {
-        perms & libc::S_IFDIR as u32 != 0
-    } else {
-        false
     }
 }
