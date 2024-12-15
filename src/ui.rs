@@ -1,10 +1,10 @@
 use crate::ssh::SSHConnection;
-use crate::ssh::SSHConnectionS;
 use eframe::egui;
-use egui::Ui;
-use std::fs::File;
-use std::io::Read;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
+
+const CONNECTIONS_FILE: &str = "saved_connections.json";
+
 pub struct UIState {
     pub hostname: String,
     pub username: String,
@@ -33,16 +33,10 @@ impl Default for UIState {
             error_message: None,
             dark_mode: true,
             saved_connections: load_saved_connections(),
-            editing_file: None, 
+            editing_file: None,
             file_content: String::new(),
         }
     }
-}
-#[derive(PartialEq, Eq)]
-
-enum FileOrType {
-    Type,
-    File,
 }
 
 pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, connection: &mut Option<SSHConnection>) {
@@ -107,7 +101,7 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, connection: &mut Option
         });
         ui.horizontal(|ui| {
             ui.label("Port:");
-            ui.add(egui::DragValue::new(&mut state.port).clamp_range(1..=65535));
+            ui.add(egui::DragValue::new(&mut state.port).range(1..=65535));
         });
 
         if ui.button("Save Current Connection").clicked() {
@@ -250,8 +244,10 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, connection: &mut Option
                                                 Err(e) => state.error_message = Some(e),
                                             }
                                         }
-                                        Err(e) => state.error_message =
-                                            Some(format!("Failed to delete: {}", e)),
+                                        Err(e) => {
+                                            state.error_message =
+                                                Some(format!("Failed to delete: {}", e))
+                                        }
                                     }
                                 }
                             }
@@ -263,8 +259,10 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, connection: &mut Option
                                             state.editing_file = Some(remote_path);
                                             state.file_content = content;
                                         }
-                                        Err(e) => state.error_message =
-                                            Some(format!("Failed to read file: {}", e)),
+                                        Err(e) => {
+                                            state.error_message =
+                                                Some(format!("Failed to read file: {}", e))
+                                        }
                                     }
                                 }
                             }
@@ -292,8 +290,10 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, connection: &mut Option
                                             Some("File saved successfully.".to_string());
                                         state.editing_file = None;
                                     }
-                                    Err(e) => state.error_message =
-                                        Some(format!("Failed to save file: {}", e)),
+                                    Err(e) => {
+                                        state.error_message =
+                                            Some(format!("Failed to save file: {}", e))
+                                    }
                                 }
                             }
                         }
@@ -326,7 +326,6 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, connection: &mut Option
     }
 }
 
-
 fn apply_theme(ctx: &egui::Context, dark_mode: bool) {
     let mut style = (*ctx.style()).clone();
 
@@ -344,10 +343,6 @@ pub struct SSHConnectionData {
     pub username: String,
     pub port: u16,
 }
-use serde::Deserialize;
-use serde::Serialize;
-
-const CONNECTIONS_FILE: &str = "saved_connections.json";
 
 fn load_saved_connections() -> Vec<SSHConnectionData> {
     if Path::new(CONNECTIONS_FILE).exists() {
