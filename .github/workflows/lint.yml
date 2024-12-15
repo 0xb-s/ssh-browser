@@ -1,0 +1,80 @@
+name: Lint and Test
+
+on:
+    push:
+        branches: ["*"] 
+    pull_request:
+
+env:
+    CARGO_TERM_COLOR: always
+
+jobs:
+    build:
+        name: "Build Project"
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Check out the repo
+              uses: actions/checkout@v3
+            - name: Build the project
+              run: cargo build --verbose
+
+    test:
+        name: "Run Tests"
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Check out the repo
+              uses: actions/checkout@v3
+
+            - uses: actions-rs/toolchain@v1
+              with:
+                  profile: minimal
+                  toolchain: stable
+                  override: true
+
+            - uses: actions-rs/cargo@v1
+              with:
+                  command: test
+
+    fmt:
+        name: "Check Code Formatting"
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Check out the repo
+              uses: actions/checkout@v3
+
+            - uses: actions-rs/toolchain@v1
+              with:
+                  profile: minimal
+                  toolchain: stable
+                  override: true
+
+            - run: rustup component add rustfmt
+
+            - uses: actions-rs/cargo@v1
+              with:
+                  command: fmt
+                  args: "--all -- --check"
+
+    clippy:
+        name: "Run Linter (Clippy)"
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Check out the repo
+              uses: actions/checkout@v3
+
+            - uses: actions-rs/toolchain@v1
+              with:
+                  profile: minimal
+                  toolchain: stable
+                  override: true
+
+            - run: rustup component add clippy
+
+            - uses: actions-rs/cargo@v1
+              with:
+                  command: clippy
+                  args: "-- -D warnings"
