@@ -14,18 +14,10 @@ fn main() -> Result<(), eframe::Error> {
     )
 }
 
+#[derive(Default)]
 struct App {
     state: UIState,
     connection: Option<SSHConnection>,
-}
-
-impl Default for App {
-    fn default() -> Self {
-        Self {
-            state: UIState::default(),
-            connection: None,
-        }
-    }
 }
 
 impl eframe::App for App {
