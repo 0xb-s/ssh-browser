@@ -18,6 +18,8 @@ pub struct UIState {
     pub saved_connections: Vec<SSHConnectionData>,
     pub editing_file: Option<String>,
     pub file_content: String,
+    pub renaming_file: Option<String>,
+    pub new_name: String,
 }
 
 impl Default for UIState {
@@ -35,6 +37,8 @@ impl Default for UIState {
             saved_connections: load_saved_connections(),
             editing_file: None,
             file_content: String::new(),
+            renaming_file: None,
+            new_name: String::new(),
         }
     }
 }
@@ -196,77 +200,115 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, connection: &mut Option
         egui::ScrollArea::vertical().show(ui, |ui| {
             for (name, is_dir) in state.files.clone() {
                 ui.horizontal(|ui| {
-                    if is_dir {
-                        if ui.button(format!("📁 {}", name)).clicked() {
-                            state.current_path =
-                                format!("{}/{}", state.current_path.trim_end_matches('/'), name);
-                            if let Some(conn) = connection {
-                                match conn.list_directory(&state.current_path) {
-                                    Ok(files) => state.files = files,
-                                    Err(e) => state.error_message = Some(e),
-                                }
-                            }
-                        }
-                    } else {
-                        ui.horizontal(|ui| {
-                            ui.label(format!("📄 {}", name));
-                            if ui.button("Download").clicked() {
+                    if let Some(renaming_file) = &state.renaming_file {
+                        if renaming_file == &name {
+                            ui.text_edit_singleline(&mut state.new_name);
+                            if ui.button("Save").clicked() {
                                 if let Some(conn) = connection {
-                                    if let Some(local_path) = rfd::FileDialog::new()
-                                        .set_file_name(name.clone())
-                                        .save_file()
-                                    {
-                                        match conn.download_file(
-                                            &format!("{}/{}", state.current_path, name),
-                                            local_path.to_str().unwrap(),
-                                        ) {
-                                            Ok(_) => {
-                                                state.error_message =
-                                                    Some("Download successful".to_string())
-                                            }
-                                            Err(e) => {
-                                                state.error_message =
-                                                    Some(format!("Failed to download: {}", e))
-                                            }
-                                        };
-                                    }
-                                }
-                            }
-                            if ui.button("Delete").clicked() {
-                                if let Some(conn) = connection {
-                                    let remote_path = format!("{}/{}", state.current_path, name);
-                                    match conn.delete_file(&remote_path) {
+                                    let old_path = format!("{}/{}", state.current_path, name);
+                                    let new_path =
+                                        format!("{}/{}", state.current_path, state.new_name);
+                                    match conn.rename(&old_path, &new_path) {
                                         Ok(_) => {
-                                            state.error_message =
-                                                Some("File deleted successfully.".to_string());
+                                            state.renaming_file = None;
+                                            state.new_name.clear();
+
                                             match conn.list_directory(&state.current_path) {
                                                 Ok(files) => state.files = files,
                                                 Err(e) => state.error_message = Some(e),
                                             }
                                         }
-                                        Err(e) => {
-                                            state.error_message =
-                                                Some(format!("Failed to delete: {}", e))
-                                        }
+                                        Err(e) => state.error_message = Some(e),
                                     }
                                 }
                             }
-                            if ui.button("Modify").clicked() {
+                            if ui.button("Cancel").clicked() {
+                                state.renaming_file = None;
+                                state.new_name.clear();
+                            }
+                        }
+                    } else {
+                        if is_dir {
+                            if ui.button(format!("📁 {}", name)).clicked() {
+                                state.current_path = format!(
+                                    "{}/{}",
+                                    state.current_path.trim_end_matches('/'),
+                                    name
+                                );
                                 if let Some(conn) = connection {
-                                    let remote_path = format!("{}/{}", state.current_path, name);
-                                    match conn.read_file(&remote_path) {
-                                        Ok(content) => {
-                                            state.editing_file = Some(remote_path);
-                                            state.file_content = content;
-                                        }
-                                        Err(e) => {
-                                            state.error_message =
-                                                Some(format!("Failed to read file: {}", e))
-                                        }
+                                    match conn.list_directory(&state.current_path) {
+                                        Ok(files) => state.files = files,
+                                        Err(e) => state.error_message = Some(e),
                                     }
                                 }
                             }
-                        });
+                        } else {
+                            ui.label(format!("📄 {}", name));
+                        }
+
+                        if !is_dir && ui.button("Download").clicked() {
+                            if let Some(conn) = connection {
+                                if let Some(local_path) = rfd::FileDialog::new()
+                                    .set_file_name(name.clone())
+                                    .save_file()
+                                {
+                                    match conn.download_file(
+                                        &format!("{}/{}", state.current_path, name),
+                                        local_path.to_str().unwrap(),
+                                    ) {
+                                        Ok(_) => {
+                                            state.error_message =
+                                                Some("Download successful".to_string());
+                                        }
+                                        Err(e) => {
+                                            state.error_message =
+                                                Some(format!("Failed to download: {}", e));
+                                        }
+                                    };
+                                }
+                            }
+                        }
+
+                        if ui.button("Delete").clicked() {
+                            if let Some(conn) = connection {
+                                let remote_path = format!("{}/{}", state.current_path, name);
+                                match conn.delete_file(&remote_path) {
+                                    Ok(_) => {
+                                        state.error_message =
+                                            Some("File deleted successfully.".to_string());
+                                        // Refresh directory listing
+                                        match conn.list_directory(&state.current_path) {
+                                            Ok(files) => state.files = files,
+                                            Err(e) => state.error_message = Some(e),
+                                        }
+                                    }
+                                    Err(e) => {
+                                        state.error_message =
+                                            Some(format!("Failed to delete: {}", e))
+                                    }
+                                }
+                            }
+                        }
+                        if !is_dir && ui.button("Modify").clicked() {
+                            if let Some(conn) = connection {
+                                let remote_path = format!("{}/{}", state.current_path, name);
+                                match conn.read_file(&remote_path) {
+                                    Ok(content) => {
+                                        state.editing_file = Some(remote_path);
+                                        state.file_content = content;
+                                    }
+                                    Err(e) => {
+                                        state.error_message =
+                                            Some(format!("Failed to read file: {}", e));
+                                    }
+                                }
+                            }
+                        }
+
+                        if ui.button("Rename").clicked() {
+                            state.renaming_file = Some(name.clone());
+                            state.new_name = name.clone();
+                        }
                     }
                 });
             }

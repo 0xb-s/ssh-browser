@@ -180,4 +180,16 @@ impl SSHConnection {
         }
         Ok(())
     }
+
+    pub fn rename(&self, old_path: &str, new_path: &str) -> Result<(), String> {
+        if let Some(sftp) = &self.sftp {
+            let old_path = Path::new(old_path);
+            let new_path = Path::new(new_path);
+
+            sftp.rename(old_path, new_path, None)
+                .map_err(|e| format!("Failed to rename: {}", e))
+        } else {
+            Err("SFTP session not initialized.".to_string())
+        }
+    }
 }
