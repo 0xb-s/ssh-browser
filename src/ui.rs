@@ -167,7 +167,7 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, connection: &mut Option
 
         ui.horizontal(|ui| {
             ui.label("Create Directory:");
-            ui.text_edit_singleline(&mut state.new_directory_name); // Use the new field
+            ui.text_edit_singleline(&mut state.new_directory_name); 
             if ui.button("Create").clicked() {
                 if !state.new_directory_name.is_empty() {
                     if let Some(conn) = connection {
@@ -177,7 +177,7 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, connection: &mut Option
                             Ok(_) => {
                                 state.error_message =
                                     Some("Directory created successfully.".to_string());
-                                state.new_directory_name.clear(); // Clear the input field
+                                state.new_directory_name.clear(); // Clear the input field &&
                                                                   // Refresh directory listing
                                 match conn.list_directory(&state.current_path) {
                                     Ok(files) => state.files = files,
