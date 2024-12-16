@@ -192,4 +192,13 @@ impl SSHConnection {
             Err("SFTP session not initialized.".to_string())
         }
     }
+
+    pub fn create_directory(&self, path: &str) -> Result<(), String> {
+        if let Some(sftp) = &self.sftp {
+            sftp.mkdir(Path::new(path), 0o755)
+                .map_err(|e| format!("Failed to create directory: {}", e))
+        } else {
+            Err("SFTP subsystem not initialized.".to_string())
+        }
+    }
 }
