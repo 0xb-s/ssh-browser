@@ -201,4 +201,17 @@ impl SSHConnection {
             Err("SFTP subsystem not initialized.".to_string())
         }
     }
+
+    pub fn create_file(&self, path: &str) -> Result<(), String> {
+        if let Some(sftp) = &self.sftp {
+            let mut file = sftp
+                .create(Path::new(path))
+                .map_err(|e| format!("Failed to create file: {}", e))?;
+            file.write_all(b"")
+                .map_err(|e| format!("Failed to initialize file: {}", e))?;
+            Ok(())
+        } else {
+            Err("SFTP subsystem not initialized.".to_string())
+        }
+    }
 }
