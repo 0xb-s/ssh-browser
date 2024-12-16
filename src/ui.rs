@@ -21,6 +21,7 @@ pub struct UIState {
     pub renaming_file: Option<String>,
     pub new_name: String,
     pub new_directory_name: String,
+    pub new_file_name: String,
 }
 
 impl Default for UIState {
@@ -41,6 +42,7 @@ impl Default for UIState {
             renaming_file: None,
             new_name: String::new(),
             new_directory_name: String::new(),
+            new_file_name: String::new(),
         }
     }
 }
@@ -192,6 +194,35 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, connection: &mut Option
                     }
                 } else {
                     state.error_message = Some("Directory name cannot be empty.".to_string());
+                }
+            }
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Create File:");
+            ui.text_edit_singleline(&mut state.new_file_name);
+            if ui.button("Create").clicked() {
+                if !state.new_file_name.is_empty() {
+                    if let Some(conn) = connection {
+                        let full_path = format!("{}/{}", state.current_path, state.new_file_name);
+                        match conn.create_file(&full_path) {
+                            Ok(_) => {
+                                state.error_message =
+                                    Some("File created successfully.".to_string());
+                                state.new_file_name.clear();
+
+                                match conn.list_directory(&state.current_path) {
+                                    Ok(files) => state.files = files,
+                                    Err(e) => state.error_message = Some(e),
+                                }
+                            }
+                            Err(e) => {
+                                state.error_message = Some(format!("Failed to create file: {}", e));
+                            }
+                        }
+                    }
+                } else {
+                    state.error_message = Some("File name cannot be empty.".to_string());
                 }
             }
         });
