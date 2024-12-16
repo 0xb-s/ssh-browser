@@ -1,6 +1,6 @@
 # An SSH file  browser
 
-SSH File Browser is a desktop application built using `egui`. It provides a graphical interface to manage files on remote servers via SSH and SFTP. This application allows users to perform various file operations with ease.
+SSH File Browser is a cross-platform desktop application built using `egui`. It provides a graphical interface to manage files on remote servers via SSH and SFTP. This application allows users to perform various file operations with ease.
 
 **Note**: This project is still in early development and requires further work to enhance features and improve stability. 
 
