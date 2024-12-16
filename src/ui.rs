@@ -20,6 +20,7 @@ pub struct UIState {
     pub file_content: String,
     pub renaming_file: Option<String>,
     pub new_name: String,
+    pub new_directory_name: String,
 }
 
 impl Default for UIState {
@@ -39,6 +40,7 @@ impl Default for UIState {
             file_content: String::new(),
             renaming_file: None,
             new_name: String::new(),
+            new_directory_name: String::new(),
         }
     }
 }
@@ -159,6 +161,37 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, connection: &mut Option
                         Ok(files) => state.files = files,
                         Err(e) => state.error_message = Some(e),
                     }
+                }
+            }
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Create Directory:");
+            ui.text_edit_singleline(&mut state.new_directory_name);
+            if ui.button("Create").clicked() {
+                if !state.new_directory_name.is_empty() {
+                    if let Some(conn) = connection {
+                        let full_path =
+                            format!("{}/{}", state.current_path, state.new_directory_name);
+                        match conn.create_directory(&full_path) {
+                            Ok(_) => {
+                                state.error_message =
+                                    Some("Directory created successfully.".to_string());
+                                state.new_directory_name.clear(); // Clear the input field &&
+                                                                  // Refresh directory listing
+                                match conn.list_directory(&state.current_path) {
+                                    Ok(files) => state.files = files,
+                                    Err(e) => state.error_message = Some(e),
+                                }
+                            }
+                            Err(e) => {
+                                state.error_message =
+                                    Some(format!("Failed to create directory: {}", e));
+                            }
+                        }
+                    }
+                } else {
+                    state.error_message = Some("Directory name cannot be empty.".to_string());
                 }
             }
         });
