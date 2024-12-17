@@ -68,6 +68,7 @@ enum Task {
 
 /// Represents the result of executing a Task.
 /// The UI thread will receive these results and update the UI state accordingly.
+#[allow(clippy::enum_variant_names)]
 enum TaskResult {
     /// The result of the connect attempt
     ConnectResult(Result<(), String>),
