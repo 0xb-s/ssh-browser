@@ -133,7 +133,7 @@ impl BackgroundWorker {
 
                     Task::ListDirectory(path) => {
                         if let Some(conn) = connection.as_ref() {
-                            let result = conn.list_directory(&path).map_err(|e| e);
+                            let result = conn.list_directory(&path);
                             let _ = result_sender.send(TaskResult::ListDirectoryResult(result));
                         } else {
                             let _ = result_sender
