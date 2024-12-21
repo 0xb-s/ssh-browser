@@ -1,6 +1,6 @@
 use crate::{
     localization::{Language, Localizer},
-    ssh::SSHConnection,
+    ssh::{SSHConnection, ServerStats},
 };
 use eframe::egui;
 use serde::{Deserialize, Serialize};
@@ -67,6 +67,7 @@ enum Task {
     WriteFile(String, String),
     /// Disconnect the active connection
     Disconnect,
+    FetchStats,
 }
 
 /// Represents the result of executing a Task.
@@ -95,6 +96,7 @@ enum TaskResult {
     WriteFileResult(Result<(), String>),
     /// The result of disconnecting
     DisconnectResult,
+    FetchStatsResult(Result<ServerStats, String>),
 }
 
 /// BackgroundWorker handles asynchronous tasks to avoid blocking the UI.
@@ -239,6 +241,16 @@ impl BackgroundWorker {
                         }
                         let _ = result_sender.send(TaskResult::DisconnectResult);
                     }
+
+                    Task::FetchStats => {
+                        if let Some(conn) = connection.as_ref() {
+                            let result = conn.fetch_stats();
+                            let _ = result_sender.send(TaskResult::FetchStatsResult(result));
+                        } else {
+                            let _ = result_sender
+                                .send(TaskResult::FetchStatsResult(Err("Not connected".into())));
+                        }
+                    }
                 }
             }
         });
@@ -299,6 +311,7 @@ pub struct UIState {
     pub language: Language,
     /// The localizer that holds translations
     pub localizer: Localizer,
+    pub server_stats: Option<ServerStats>,
 }
 
 impl Default for UIState {
@@ -325,6 +338,7 @@ impl Default for UIState {
             language: Language::English,
 
             localizer: Localizer::new(),
+            server_stats: None,
         }
     }
 }
@@ -460,6 +474,21 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, _connection: &mut Optio
             ui.colored_label(egui::Color32::RED, error);
         }
     } else {
+        ui.collapsing("Dashboard", |ui| {
+            if ui.button("Refresh Stats").clicked() {
+                state.operation_in_progress = true;
+                let worker = state.worker.clone();
+                worker.lock().unwrap().send_task(Task::FetchStats);
+            }
+
+            if let Some(stats) = &state.server_stats {
+                ui.label(format!("CPU Usage:\n  {}", stats.cpu_usage));
+                ui.label(format!("Memory Usage:\n  {}", stats.memory_usage));
+                ui.label(format!("Disk Usage:\n  {}", stats.disk_usage));
+            } else {
+                ui.label("No stats available. Click 'Refresh Stats' to fetch.");
+            }
+        });
         ui.heading(state.localizer.t(state.language, "ssh_file_manager"));
 
         ui.horizontal(|ui| {
@@ -852,6 +881,16 @@ fn poll_worker(state: &mut UIState) {
                 state.current_path = "/".to_string();
                 state.error_message = Some("Disconnected".to_string());
             }
+            TaskResult::FetchStatsResult(res) => match res {
+                Ok(stats) => {
+                    state.server_stats = Some(stats);
+                    state.error_message = None;
+                }
+                Err(e) => {
+                    state.error_message = Some(e);
+                    state.server_stats = None;
+                }
+            },
         }
     }
 }
