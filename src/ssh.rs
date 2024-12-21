@@ -15,6 +15,12 @@ pub struct SSHConnection {
     sftp: Option<Sftp>,
 }
 
+#[derive(Debug, Clone)]
+pub struct ServerStats {
+    pub cpu_usage: String,
+    pub memory_usage: String,
+    pub disk_usage: String,
+}
 impl SSHConnection {
     pub fn new(hostname: &str, username: &str, password: &str, port: u16) -> Self {
         Self {
@@ -212,6 +218,69 @@ impl SSHConnection {
             Ok(())
         } else {
             Err("SFTP subsystem not initialized.".to_string())
+        }
+    }
+
+    fn run_command(session: &Session, cmd: &str) -> Result<String, String> {
+        let mut channel = session
+            .channel_session()
+            .map_err(|e| format!("Failed to open channel: {}", e))?;
+        channel
+            .exec(cmd)
+            .map_err(|e| format!("Failed to exec command {}: {}", cmd, e))?;
+
+        let mut stdout = String::new();
+        channel
+            .read_to_string(&mut stdout)
+            .map_err(|e| format!("Failed to read command output: {}", e))?;
+
+        channel
+            .wait_close()
+            .map_err(|e| format!("Failed to close channel: {}", e))?;
+
+        Ok(stdout)
+    }
+
+    pub fn fetch_stats(&self) -> Result<ServerStats, String> {
+        let session = self
+            .session
+            .as_ref()
+            .ok_or_else(|| "Session not initialized.".to_string())?;
+
+        let cpu_cmd = r#"top -bn1 | grep "Cpu(s)""#;
+        let mem_cmd = r#"free -h | grep "Mem:""#;
+        let disk_cmd = r#"df -h / | tail -1"#;
+
+        let raw_cpu = Self::run_command(session, cpu_cmd)?;
+        let raw_mem = Self::run_command(session, mem_cmd)?;
+        let raw_disk = Self::run_command(session, disk_cmd)?;
+
+        Ok(Self::process_stats(&raw_cpu, &raw_mem, &raw_disk))
+    }
+
+    fn process_stats(raw_cpu: &str, raw_mem: &str, raw_disk: &str) -> ServerStats {
+        let cpu_parts: Vec<&str> = raw_cpu.split_whitespace().collect();
+        let cpu_usage = format!(
+            "User: {}%, System: {}%, Idle: {}%, Steal: {}%",
+            cpu_parts[1], cpu_parts[3], cpu_parts[7], cpu_parts[15]
+        );
+
+        let mem_parts: Vec<&str> = raw_mem.split_whitespace().collect();
+        let memory_usage = format!(
+            "Total: {}, Used: {}, Free: {}, Buffers/Cache: {}",
+            mem_parts[1], mem_parts[2], mem_parts[3], mem_parts[5]
+        );
+
+        let disk_parts: Vec<&str> = raw_disk.split_whitespace().collect();
+        let disk_usage = format!(
+            "Filesystem: {}, Total: {}, Used: {}, Available: {}, Usage: {}",
+            disk_parts[0], disk_parts[1], disk_parts[2], disk_parts[3], disk_parts[4]
+        );
+
+        ServerStats {
+            cpu_usage,
+            memory_usage,
+            disk_usage,
         }
     }
 }
