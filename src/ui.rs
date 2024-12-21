@@ -1,4 +1,7 @@
-use crate::ssh::SSHConnection;
+use crate::{
+    localization::{Language, Localizer},
+    ssh::SSHConnection,
+};
 use eframe::egui;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -291,6 +294,11 @@ pub struct UIState {
     worker: Arc<Mutex<BackgroundWorker>>,
     /// Shows if an operation is in progress to provide feedback to the user
     pub operation_in_progress: bool,
+
+    /// The current chosen language
+    pub language: Language,
+    /// The localizer that holds translations
+    pub localizer: Localizer,
 }
 
 impl Default for UIState {
@@ -314,6 +322,9 @@ impl Default for UIState {
             new_file_name: String::new(),
             worker: Arc::new(Mutex::new(BackgroundWorker::new())),
             operation_in_progress: false,
+            language: Language::English,
+
+            localizer: Localizer::new(),
         }
     }
 }
@@ -326,69 +337,98 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, _connection: &mut Optio
     poll_worker(state);
 
     ui.horizontal(|ui| {
-        ui.label("Theme:");
+        ui.label(state.localizer.t(state.language, "theme_label"));
+
         if ui
             .button(if state.dark_mode {
-                "Switch to Light Mode"
+                state.localizer.t(state.language, "switch_light_mode")
             } else {
-                "Switch to Dark Mode"
+                state.localizer.t(state.language, "switch_dark_mode")
             })
             .clicked()
         {
             state.dark_mode = !state.dark_mode;
         }
+
+        ui.label("Language:");
+        egui::ComboBox::from_label("")
+            .selected_text(format!("{:?}", state.language))
+            .show_ui(ui, |ui| {
+                if ui.button("English").clicked() {
+                    state.language = Language::English;
+                }
+                if ui.button("Arabic").clicked() {
+                    state.language = Language::Arabic;
+                }
+                if ui.button("French").clicked() {
+                    state.language = Language::French;
+                }
+                if ui.button("Chinese").clicked() {
+                    state.language = Language::Chinese;
+                }
+            });
     });
 
     if state.operation_in_progress {
-        ui.label("Operation in progress...");
+        ui.label(state.localizer.t(state.language, "operation_in_progress"));
     }
 
     if !state.connected {
-        ui.heading("Connect to SSH Server");
+        ui.heading(state.localizer.t(state.language, "connect_to_ssh"));
 
         ui.horizontal(|ui| {
-            ui.label("Saved Connections:");
+            ui.label(state.localizer.t(state.language, "saved_connections"));
             if !state.saved_connections.is_empty() {
-                egui::ComboBox::from_label("Select")
-                    .selected_text("Choose a connection")
-                    .show_ui(ui, |ui| {
-                        for saved_conn in &state.saved_connections {
-                            if ui
-                                .button(format!(
-                                    "{}@{}:{}",
-                                    saved_conn.username, saved_conn.hostname, saved_conn.port
-                                ))
-                                .clicked()
-                            {
-                                state.hostname = saved_conn.hostname.clone();
-                                state.username = saved_conn.username.clone();
-                                state.port = saved_conn.port;
-                            }
+                egui::ComboBox::from_label(
+                    state
+                        .localizer
+                        .t(state.language, "select_connection_combo_label"),
+                )
+                .selected_text(state.localizer.t(state.language, "choose_a_connection"))
+                .show_ui(ui, |ui| {
+                    for saved_conn in &state.saved_connections {
+                        if ui
+                            .button(format!(
+                                "{}@{}:{}",
+                                saved_conn.username, saved_conn.hostname, saved_conn.port
+                            ))
+                            .clicked()
+                        {
+                            state.hostname = saved_conn.hostname.clone();
+                            state.username = saved_conn.username.clone();
+                            state.port = saved_conn.port;
                         }
-                    });
+                    }
+                });
             } else {
-                ui.label("No saved connections.");
+                ui.label(state.localizer.t(state.language, "no_saved_connections"));
             }
         });
 
         ui.horizontal(|ui| {
-            ui.label("Hostname:");
+            ui.label(state.localizer.t(state.language, "hostname_label"));
             ui.text_edit_singleline(&mut state.hostname);
         });
+
         ui.horizontal(|ui| {
-            ui.label("Username:");
+            ui.label(state.localizer.t(state.language, "username_label"));
             ui.text_edit_singleline(&mut state.username);
         });
+
         ui.horizontal(|ui| {
-            ui.label("Password:");
+            ui.label(state.localizer.t(state.language, "password_label"));
             ui.add(egui::TextEdit::singleline(&mut state.password).password(true));
         });
+
         ui.horizontal(|ui| {
-            ui.label("Port:");
+            ui.label(state.localizer.t(state.language, "port_label"));
             ui.add(egui::DragValue::new(&mut state.port).range(1..=65535));
         });
 
-        if ui.button("Save Current Connection").clicked() {
+        if ui
+            .button(state.localizer.t(state.language, "save_current_connection"))
+            .clicked()
+        {
             let new_conn = SSHConnectionData {
                 hostname: state.hostname.clone(),
                 username: state.username.clone(),
@@ -400,7 +440,10 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, _connection: &mut Optio
             }
         }
 
-        if ui.button("Connect").clicked() {
+        if ui
+            .button(state.localizer.t(state.language, "connect_button"))
+            .clicked()
+        {
             state.operation_in_progress = true;
             let worker = state.worker.clone();
             let hostname = state.hostname.clone();
@@ -417,10 +460,10 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, _connection: &mut Optio
             ui.colored_label(egui::Color32::RED, error);
         }
     } else {
-        ui.heading("SSH File Manager");
+        ui.heading(state.localizer.t(state.language, "ssh_file_manager"));
 
         ui.horizontal(|ui| {
-            ui.label("Current Path:");
+            ui.label(state.localizer.t(state.language, "current_path_label"));
             if ui
                 .text_edit_singleline(&mut state.current_path)
                 .lost_focus()
@@ -434,9 +477,12 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, _connection: &mut Optio
         });
 
         ui.horizontal(|ui| {
-            ui.label("Create Directory:");
+            ui.label(state.localizer.t(state.language, "create_directory_label"));
             ui.text_edit_singleline(&mut state.new_directory_name);
-            if ui.button("Create").clicked() {
+            if ui
+                .button(state.localizer.t(state.language, "create_label"))
+                .clicked()
+            {
                 if !state.new_directory_name.is_empty() {
                     let full_path = format!("{}/{}", state.current_path, state.new_directory_name);
                     state.operation_in_progress = true;
@@ -447,15 +493,23 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, _connection: &mut Optio
                         .unwrap()
                         .send_task(Task::CreateDirectory(full_path));
                 } else {
-                    state.error_message = Some("Directory name cannot be empty.".to_string());
+                    state.error_message = Some(
+                        state
+                            .localizer
+                            .t(state.language, "directory_name_empty_error")
+                            .to_string(),
+                    );
                 }
             }
         });
 
         ui.horizontal(|ui| {
-            ui.label("Create File:");
+            ui.label(state.localizer.t(state.language, "create_file_label"));
             ui.text_edit_singleline(&mut state.new_file_name);
-            if ui.button("Create").clicked() {
+            if ui
+                .button(state.localizer.t(state.language, "create_label"))
+                .clicked()
+            {
                 if !state.new_file_name.is_empty() {
                     let full_path = format!("{}/{}", state.current_path, state.new_file_name);
                     state.operation_in_progress = true;
@@ -466,13 +520,21 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, _connection: &mut Optio
                         .unwrap()
                         .send_task(Task::CreateFile(full_path));
                 } else {
-                    state.error_message = Some("File name cannot be empty.".to_string());
+                    state.error_message = Some(
+                        state
+                            .localizer
+                            .t(state.language, "file_name_empty_error")
+                            .to_string(),
+                    );
                 }
             }
         });
 
         ui.horizontal(|ui| {
-            if ui.button("Up").clicked() {
+            if ui
+                .button(state.localizer.t(state.language, "up_button"))
+                .clicked()
+            {
                 if let Some(pos) = state.current_path.rfind('/') {
                     state.current_path.truncate(pos);
                     if state.current_path.is_empty() {
@@ -484,14 +546,20 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, _connection: &mut Optio
                     worker.lock().unwrap().send_task(Task::ListDirectory(path));
                 }
             }
-            if ui.button("Home").clicked() {
+            if ui
+                .button(state.localizer.t(state.language, "home_button"))
+                .clicked()
+            {
                 state.current_path = "/".to_string();
                 state.operation_in_progress = true;
                 let worker = state.worker.clone();
                 let path = state.current_path.clone();
                 worker.lock().unwrap().send_task(Task::ListDirectory(path));
             }
-            if ui.button("Disconnect").clicked() {
+            if ui
+                .button(state.localizer.t(state.language, "disconnect_button"))
+                .clicked()
+            {
                 state.operation_in_progress = true;
                 let worker = state.worker.clone();
                 worker.lock().unwrap().send_task(Task::Disconnect);
@@ -504,7 +572,10 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, _connection: &mut Optio
                     if let Some(renaming_file) = &state.renaming_file {
                         if renaming_file == &name {
                             ui.text_edit_singleline(&mut state.new_name);
-                            if ui.button("Save").clicked() {
+                            if ui
+                                .button(state.localizer.t(state.language, "save_button"))
+                                .clicked()
+                            {
                                 let old_path = format!("{}/{}", state.current_path, name);
                                 let new_path = format!("{}/{}", state.current_path, state.new_name);
                                 state.operation_in_progress = true;
@@ -516,7 +587,10 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, _connection: &mut Optio
                                     .unwrap()
                                     .send_task(Task::RenameFile(old_path, new_path));
                             }
-                            if ui.button("Cancel").clicked() {
+                            if ui
+                                .button(state.localizer.t(state.language, "cancel_button"))
+                                .clicked()
+                            {
                                 state.renaming_file = None;
                                 state.new_name.clear();
                             }
@@ -538,7 +612,11 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, _connection: &mut Optio
                             ui.label(format!("📄 {}", name));
                         }
 
-                        if !is_dir && ui.button("Download").clicked() {
+                        if !is_dir
+                            && ui
+                                .button(state.localizer.t(state.language, "download_button"))
+                                .clicked()
+                        {
                             if let Some(local_path) = rfd::FileDialog::new()
                                 .set_file_name(name.clone())
                                 .save_file()
@@ -553,7 +631,10 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, _connection: &mut Optio
                             }
                         }
 
-                        if ui.button("Delete").clicked() {
+                        if ui
+                            .button(state.localizer.t(state.language, "delete_button"))
+                            .clicked()
+                        {
                             let remote_path = format!("{}/{}", state.current_path, name);
                             let worker = state.worker.clone();
                             state.operation_in_progress = true;
@@ -563,7 +644,11 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, _connection: &mut Optio
                                 .send_task(Task::DeleteFile(remote_path));
                         }
 
-                        if !is_dir && ui.button("Modify").clicked() {
+                        if !is_dir
+                            && ui
+                                .button(state.localizer.t(state.language, "modify_button"))
+                                .clicked()
+                        {
                             let remote_path = format!("{}/{}", state.current_path, name);
                             let worker = state.worker.clone();
                             state.operation_in_progress = true;
@@ -573,7 +658,10 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, _connection: &mut Optio
                                 .send_task(Task::ReadFile(remote_path));
                         }
 
-                        if ui.button("Rename").clicked() {
+                        if ui
+                            .button(state.localizer.t(state.language, "rename_button"))
+                            .clicked()
+                        {
                             state.renaming_file = Some(name.clone());
                             state.new_name = name.clone();
                         }
@@ -584,15 +672,22 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, _connection: &mut Optio
 
         if let Some(editing_file) = &state.editing_file {
             let editing_file_clone = editing_file.clone();
-            egui::Window::new("Edit File")
+            egui::Window::new(state.localizer.t(state.language, "edit_file_window"))
                 .resizable(true)
                 .collapsible(false)
                 .show(ui.ctx(), |ui| {
-                    ui.label(format!("Editing: {}", editing_file_clone));
+                    ui.label(format!(
+                        "{} {}",
+                        state.localizer.t(state.language, "editing_label"),
+                        editing_file_clone
+                    ));
                     ui.text_edit_multiline(&mut state.file_content);
 
                     ui.horizontal(|ui| {
-                        if ui.button("Save").clicked() {
+                        if ui
+                            .button(state.localizer.t(state.language, "save_button"))
+                            .clicked()
+                        {
                             let worker = state.worker.clone();
                             state.operation_in_progress = true;
                             let path = editing_file_clone.clone();
@@ -602,14 +697,20 @@ pub fn render_ui(ui: &mut egui::Ui, state: &mut UIState, _connection: &mut Optio
                                 .unwrap()
                                 .send_task(Task::WriteFile(path, content));
                         }
-                        if ui.button("Cancel").clicked() {
+                        if ui
+                            .button(state.localizer.t(state.language, "cancel_button"))
+                            .clicked()
+                        {
                             state.editing_file = None;
                         }
                     });
                 });
         }
 
-        if ui.button("Upload File").clicked() {
+        if ui
+            .button(state.localizer.t(state.language, "upload_file_button"))
+            .clicked()
+        {
             if let Some(local_path) = rfd::FileDialog::new().pick_file() {
                 let remote_path = format!(
                     "{}/{}",
